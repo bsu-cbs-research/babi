@@ -1,0 +1,19 @@
+[project]
+name = "babi-auto-labeling"
+version = "0.1.0"
+description = "Auto-labeling tool and waveform anomaly detection for BABI lab"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel>=6.30.1",
+    "ipywidgets>=8.1.7",
+    "jupyterlab-widgets>=3.0.15",
+    "keras>=3.11.3",
+    "matplotlib>=3.10.6",
+    "matplotlib-inline>=0.1.7",
+    "openpyxl>=3.1.5",
+    "pandas>=2.3.1",
+    "scipy>=1.16.2",
+    "setuptools>=80.9.0",
+    "tensorflow>=2.20.0",
+]

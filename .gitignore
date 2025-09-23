@@ -1,0 +1,8 @@
+.vscode
+notes.md
+data/raw/*
+data/preprocessed/*
+.venv
+__pycache__
+.DS_Store
+babi.egg-info
