@@ -1,0 +1,1 @@
+capnostream_window_size = 6 # in seconds

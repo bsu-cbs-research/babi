@@ -1,6 +1,7 @@
 from typing import cast
 import os
 import pandas as pd
+import json
 from data import constants
 
 def _compute_similar_group(trial_name: str):
@@ -33,7 +34,7 @@ def _preprocess_capnostream_file(file: str, overwrite: bool = False, export: boo
     data_start_row = 6 # data starts at row 6 (0-indexed), after the metadata rows
 
     current_group_index: int | None = None
-    for i, row in raw_capnostream_df.iloc[data_start_row:, :].iterrows():
+    for _, row in raw_capnostream_df.iloc[data_start_row:, :].iterrows():
         if type(row.iloc[0]) == str and all(pd.isna(row.iloc[1:])): # all other rows are empty -> must have trial start
             trial_name = cast(str, row.iloc[0]).split("-")[-1].strip().lower()
             similar_group = _compute_similar_group(trial_name) # find the most similar group to the current trial name
@@ -68,9 +69,9 @@ def _preprocess_capnostream_file(file: str, overwrite: bool = False, export: boo
 
     return identifier, df
 
-
 def _preprocess_capnostream_files(overwrite: bool = False, export: bool = False):
     """Combine all individual preprocessed capnostream files into a single pkl file."""
+    
     if not overwrite and os.path.exists(constants.preprocessed_data_paths["capnostream"]):
         print(f"Combined preprocessed Capnostream data already exists at {constants.preprocessed_data_paths['capnostream']}")
         return
@@ -96,7 +97,7 @@ def _preprocess_capnostream_waveform(overwrite: bool = False):
     """Process the raw Capnostream waveform data into a structured format that can be exported as a pickle file."""
 
     if not overwrite and os.path.exists(constants.preprocessed_data_paths["waveform"]):
-        print(f"Preprocessed Capnostream-Waveform data already exists at {constants.preprocessed_data_paths['waveform']}")
+        print(f"Preprocessed Capnostream waveform data already exists at {constants.preprocessed_data_paths['waveform']}")
         return
 
     df = pd.read_excel(constants.raw_data_paths["capnostream"], sheet_name="7.10.25 Waveforms")
@@ -115,5 +116,31 @@ def preprocess(overwrite: bool = False):
 
     _preprocess_capnostream_files(overwrite=overwrite, export=True)
 
+def export_label_studio(overwrite: bool = False):
+    """Prepare the preprocessed capnostream data for import into Label Studio."""
+
+    if not overwrite and os.path.exists(constants.preprocessed_data_paths["capnostream-labelstudio"]):
+        print(f"Label Studio Capnostream data already exists at {constants.preprocessed_data_paths['capnostream-labelstudio']}")
+        return
+    
+    df: pd.DataFrame = pd.read_pickle(constants.preprocessed_data_paths["capnostream"])
+    groups = df.groupby(["baby_index", "group_index"])
+
+    tasks: list[dict] = []
+    for (baby_index, group_index), group in groups:
+        co2_wave = group["co2_wave"].values.tolist()
+        task = {
+            "id": f"baby-{baby_index}-group-{group_index}",
+            "data": {"ts":{"time": [round(i * 0.05, 2) for i in range(len(co2_wave))], "co2": co2_wave}}, 
+            "meta": {"baby_index": int(baby_index), "group_index": int(group_index)}
+        }
+        tasks.append(task)
+
+    with open(constants.preprocessed_data_paths["capnostream-labelstudio"], "w") as f:
+        json.dump(tasks, f)
+
+    print(f"Label Studio Capnostream data saved to {constants.preprocessed_data_paths['capnostream-labelstudio']}")
+        
 if __name__ == "__main__":
-    preprocess(overwrite=True)
+    preprocess(overwrite=False)
+    export_label_studio(overwrite=False)

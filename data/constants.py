@@ -13,6 +13,8 @@ preprocessed_data_dir = "data/preprocessed/"
 preprocessed_data_paths = {k: os.path.join(preprocessed_data_dir, v) for k, v in {
     "mocap": "mocap.pkl",
     "capnostream": "capnostream.pkl",
+    "capnostream-labelstudio": "labelstudio/capnostream.json",
+    "capnostream-labelstudio-annotated": "labelstudio/capnostream-annotated.json",
     "waveform": "waveform.pkl",
     "masimo": "masimo.pkl"
 }.items()}
