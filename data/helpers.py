@@ -1,5 +1,6 @@
 import json
 from data import constants
+import pandas as pd
 
 def load_capnostream_annotated_data() -> list[list[int]]:
     """Loads the annotated capnostream data in a practical format"""
@@ -17,6 +18,9 @@ def load_capnostream_annotated_data() -> list[list[int]]:
                 data.append(waveform[start:end])
 
     return data
+
+def load_processed_capnostream() -> pd.DataFrame:
+    return pd.read_pickle(constants.preprocessed_data_paths["capnostream"])
 
 if __name__ == "__main__":
     annotated_data = load_capnostream_annotated_data()
