@@ -12,12 +12,13 @@ def apply_pruning_filter(units: np.ndarray, constraints_hash: str) -> np.ndarray
         return units
     
     included_indices = np.loadtxt(path, dtype=int)
-    mask = np.isin(np.arange(len(units)), included_indices)
+    mask = np.zeros(len(units), dtype=bool)
+    mask[included_indices] = True
     return units[mask]
 
 def build_pruning_filter_file(files: str, constraints: extraction.ExtractionConstraints):
         key = constraints.hash()
-        included_indices = np.array([int(i.replace(".png", "")) for i in os.listdir(files) if i.endswith(".png")])
+        included_indices = np.array(sorted([int(i.replace(".png", "")) - 1 for i in os.listdir(files) if i.endswith(".png")]))
         np.savetxt(os.path.join(os.path.join(base_path, "filters"), f"{key}.txt"), included_indices, fmt="%d")
 
 if __name__ == "__main__":
