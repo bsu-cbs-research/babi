@@ -6,3 +6,4 @@ data/preprocessed/*
 __pycache__
 .DS_Store
 babi.egg-info
+out
