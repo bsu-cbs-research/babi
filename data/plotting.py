@@ -58,10 +58,10 @@ def plot_capnostream_fourier_transform(data: pd.Series | np.ndarray):
     plt.grid(True)
     plt.show()
 
-def dual(s1: np.ndarray, s2: np.ndarray, title: str = 'Original vs Reconstructed'):
+def dual(s1: np.ndarray, s2: np.ndarray, title: str = 'Original vs Reconstructed', l1: str = 'Original', l2: str = 'Reconstructed'):
     plt.figure(figsize=(18, 4))
-    plt.plot(s1, label='Original')
-    plt.plot(s2, label='Reconstructed')
+    plt.plot(s1, label=l1)
+    plt.plot(s2, label=l2)
     plt.title(title)
     plt.legend()
     plt.show()

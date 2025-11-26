@@ -1,16 +1,25 @@
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, Conv1D, MaxPooling1D, UpSampling1D, Flatten, Reshape
 from models import constants
 
-def build(unit_length: int = constants.unit_length, latent: int = 2) -> Sequential:
+def build(unit_length: int = constants.unit_length) -> Sequential:
     """Builds and returns the compiled autoencoder model."""
     autoencoder = Sequential([
-        Input(shape=(unit_length,)),
-        Dense(12, activation="relu"),
-        Dense(latent, activation='relu', name='latent'), # latent space (bottle neck)
-        Dense(12, activation="relu"),
-        Dense(unit_length, activation="linear")
+        Input(shape=(unit_length, 1)),
+        Conv1D(filters=16, kernel_size=3, activation='relu', padding='same'), # compression 1: (20, 1) -> (20, 16)
+        MaxPooling1D(pool_size=2, padding='same'), # downsample 1: (20, 1) -> (10, 16)
+        Conv1D(filters=8, kernel_size=3, activation='relu', padding='same'), # compression 2: (10, 16) -> (10, 8)
+        MaxPooling1D(pool_size=2, padding='same'), # downsample 2: (10, 8) -> (5, 8)
+        Flatten(), # flatten to vector: (5, 8) -> (40,)
+        Dense(3, activation='relu', name='bottleneck'), # latent space: (40,) -> (3,)
+        Dense(5 * 8, activation='relu'), # expand bottleneck: (3,) -> (40,)
+        Reshape((5, 8)), # reshape: (40,) -> (5, 8)
+        UpSampling1D(size=2), # upsample back to (10, 8)
+        Conv1D(filters=8, kernel_size=3, activation='relu', padding='same'), # expansion conv: (10, 8) -> (10, 8)
+        UpSampling1D(size=2), # upsample back to (20, 8)
+        Conv1D(filters=16, kernel_size=3, activation='relu', padding='same'), # expansion conv: (20, 8) -> (20, 16)
+        Conv1D(filters=1, kernel_size=3, activation='linear', padding='same') # reconstruction: (20, 16) -> (20, 1)
     ])
 
     autoencoder.compile(optimizer='adam', loss='mse')
@@ -19,7 +28,7 @@ def build(unit_length: int = constants.unit_length, latent: int = 2) -> Sequenti
 def calculate_threshold(ae: Sequential, val: np.ndarray, percentile: float = 95) -> float:
     """Calculates the 95th percentile MSE threshold on the validation set."""
     reconstructions = ae.predict(val, verbose='silent')
-    mse = np.mean(np.power(np.squeeze(val) - reconstructions, 2), axis=1)
+    mse = np.mean(np.power(val - reconstructions, 2), axis=1)
     return np.percentile(mse, percentile) 
 
 def predictor(ae: Sequential, threshold: float):
@@ -34,8 +43,9 @@ def predictor(ae: Sequential, threshold: float):
 def batch_predictor(ae: Sequential, threshold: float):
     """Predicts the reconstruction of a given sample."""
     def batch_predict(samples: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        recon = np.array(ae.predict(np.expand_dims(samples, axis=-1), verbose='silent'),)
-        errors = np.mean(np.power(samples - recon, 2), axis=1)
-        return recon, errors, errors < threshold
+        samples = np.expand_dims(samples, axis=-1)
+        recon = np.array(ae.predict(samples, verbose='silent'),)
+        errors = np.array(np.mean(np.power(samples - recon, 2), axis=1)).reshape(-1)
+        return np.squeeze(recon), np.squeeze(errors), errors < threshold
     
     return batch_predict
