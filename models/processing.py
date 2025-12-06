@@ -1,9 +1,23 @@
 import numpy as np
-from data.prepare import load, augmentation
+from data.prepare import load, augmentation, constants
 
 def _corrupt(sample: np.ndarray, noise: float = 0.015) -> np.ndarray:
     """Applies corruption to a given sample. Currently applies noise addition."""
     return augmentation.noise(sample, noise_level=noise)
+
+def stack_signals(signals: np.ndarray, unit_length = constants.unit_length ) -> np.ndarray:
+    """Convert signals into overlapping windows."""
+    length = (signals.shape[0] - 1) + unit_length
+    averages = np.zeros(length)
+    counts = np.zeros(length)
+
+    for i in range(signals.shape[0]):
+        start = i
+        end = i + unit_length
+        averages[start:end] += signals[i]
+        counts[start:end] += 1
+
+    return averages / counts
 
 def reverse_sample_scaling(scaled_data: np.ndarray, g_min: float, g_max: float):
     return scaled_data * (g_max - g_min) + g_min
