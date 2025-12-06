@@ -1,7 +1,7 @@
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Input, Dense, Conv1D, MaxPooling1D, UpSampling1D, Flatten, Reshape
-from models import constants
+from data.prepare import constants
 
 def build(unit_length: int = constants.unit_length) -> Sequential:
     """Builds and returns the compiled autoencoder model."""
@@ -12,8 +12,8 @@ def build(unit_length: int = constants.unit_length) -> Sequential:
         Conv1D(filters=8, kernel_size=3, activation='relu', padding='same'), # compression 2: (10, 16) -> (10, 8)
         MaxPooling1D(pool_size=2, padding='same'), # downsample 2: (10, 8) -> (5, 8)
         Flatten(), # flatten to vector: (5, 8) -> (40,)
-        Dense(3, activation='relu', name='bottleneck'), # latent space: (40,) -> (3,)
-        Dense(5 * 8, activation='relu'), # expand bottleneck: (3,) -> (40,)
+        Dense(8, activation='relu', name='bottleneck'), # latent space: (40,) -> (8,)
+        Dense(5 * 8, activation='relu'), # expand bottleneck: (8,) -> (40,)
         Reshape((5, 8)), # reshape: (40,) -> (5, 8)
         UpSampling1D(size=2), # upsample back to (10, 8)
         Conv1D(filters=8, kernel_size=3, activation='relu', padding='same'), # expansion conv: (10, 8) -> (10, 8)

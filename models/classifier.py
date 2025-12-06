@@ -1,6 +1,6 @@
 from keras.models import Sequential
 from keras.layers import Input, Dense, Dropout, Conv1D, BatchNormalization, GlobalAveragePooling1D
-from models import constants
+from data.prepare import constants
 
 def build_mlp(unit_length: int = constants.unit_length) -> Sequential:
     """Builds and returns the compiled autoencoder model."""

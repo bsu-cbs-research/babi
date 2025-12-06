@@ -1,5 +1,5 @@
 import numpy as np
-from models import constants
+from data.prepare import constants
 
 def scale(signal: np.ndarray, scale_factor: float) -> np.ndarray:
     """Scale the amplitude of the signal by scale_factor"""

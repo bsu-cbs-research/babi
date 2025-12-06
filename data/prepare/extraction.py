@@ -29,7 +29,7 @@ class ExtractionConstraints:
         return hashlib.sha256(formatted_string.encode()).hexdigest()[:10]
 
 def extract_unit_markers(signal: np.ndarray, constraints = ExtractionConstraints()) -> list[tuple[int, int]]:
-    """Extract 'breathing' units by capturing segments between low plateaus"""
+    """Extract 'breathing' unit start and end indices from the given signal based on the provided constraints"""
     position = constraints.slope_window - 1
     units: list[tuple[int, int]] = []
     constraint_failure_count = {
@@ -94,21 +94,20 @@ def extract_unit_markers(signal: np.ndarray, constraints = ExtractionConstraints
 
         units.append((marker[0], position)) # store valid unit
         marker = (position, mean_amplitude) # update marker to current position
-        # print(f"Position: {position}, Mean Amplitude: {mean_amplitude:.2f}, Slope: {slope:.4f}")
 
-    for constraint, count in constraint_failure_count.items():
-        print(f"Constraint '{constraint}' failures: {count}")
+    #/ Uncomment to see constraint failure statistics
+    # for constraint, count in constraint_failure_count.items():
+    #     print(f"Constraint '{constraint}' failures: {count}")
 
+    # mean_unit_length = np.mean([end-start for start, end in units])
+    # max_unit_length = np.max([end-start for start, end in units])
+    # min_unit_length = np.min([end-start for start, end in units])
+    # total_unit_length = np.sum([end-start for start, end in units])
 
-    mean_unit_length = np.mean([end-start for start, end in units])
-    max_unit_length = np.max([end-start for start, end in units])
-    min_unit_length = np.min([end-start for start, end in units])
-    total_unit_length = np.sum([end-start for start, end in units])
-
-    print(f"Min unit length: {min_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
-    print(f"Max unit length: {max_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
-    print(f"Mean unit length: {mean_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
-    print(f"Total unit length: {total_unit_length/constants.capnostream_sampling_rate/60:.2f} minutes.")
+    # print(f"Min unit length: {min_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
+    # print(f"Max unit length: {max_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
+    # print(f"Mean unit length: {mean_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
+    # print(f"Total unit length: {total_unit_length/constants.capnostream_sampling_rate/60:.2f} minutes.")
 
     return units
 
