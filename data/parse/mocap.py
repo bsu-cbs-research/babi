@@ -4,11 +4,11 @@ import csv
 import pandas as pd
 from data import constants
 
-def preprocess(overwrite: bool = False, with_tuples: bool = False) -> None:
-    """Process the raw MoCap data into a structured format that can be exported as a pickle file."""
-    preprocessed_path = constants.preprocessed_data_paths[with_tuples and "mocap-tuples" or "mocap"]
-    if not overwrite and os.path.exists(preprocessed_path):
-        print(f"Preprocessed MoCap data already exists at {preprocessed_path}")
+def parse(overwrite: bool = False, with_tuples: bool = False) -> None:
+    """Parse the raw MoCap data into a structured format that can be exported as a pickle file."""
+    parsed_path = constants.parsed_data_paths[with_tuples and "mocap-tuples" or "mocap"]
+    if not overwrite and os.path.exists(parsed_path):
+        print(f"Parsed MoCap data already exists at {parsed_path}")
         return
 
     metadata: dict[str, str | int | list[str]] = {}
@@ -45,10 +45,10 @@ def preprocess(overwrite: bool = False, with_tuples: bool = False) -> None:
                     
 
     df.attrs = df.attrs | metadata
-    df.to_pickle(preprocessed_path)
-    print(f"Preprocessed MoCap data saved to {preprocessed_path}")
+    df.to_pickle(parsed_path)
+    print(f"Parsed MoCap data saved to {parsed_path}")
 
 
 if __name__ == "__main__":
-    preprocess(overwrite=True)
-    preprocess(overwrite=True, with_tuples=True)
+    parse(overwrite=True)
+    parse(overwrite=True, with_tuples=True)

@@ -3,11 +3,11 @@ import pandas as pd
 from typing import cast
 from data import constants
 
-def preprocess(overwrite: bool = False):
-    """Process the raw Masimo data into a structured format that can be exported as a pickle file."""
+def parse(overwrite: bool = False):
+    """Parse the raw Masimo data into a structured format that can be exported as a pickle file."""
 
-    if not overwrite and os.path.exists(constants.preprocessed_data_paths["masimo"]):
-        print(f"Preprocessed Masimo data already exists at {constants.preprocessed_data_paths['masimo']}")
+    if not overwrite and os.path.exists(constants.parsed_data_paths["masimo"]):
+        print(f"Parsed Masimo data already exists at {constants.parsed_data_paths['masimo']}")
         return
     
     raw_masimo_df = pd.read_excel(constants.raw_data_paths["masimo"], sheet_name="All Data")
@@ -34,5 +34,5 @@ def preprocess(overwrite: bool = False):
 
     df.attrs = df.attrs | metadata  # append metadata to the DataFrame attributes
 
-    df.to_pickle(constants.preprocessed_data_paths["masimo"])
-    print(f"Preprocessed Masimo data saved to {constants.preprocessed_data_paths['masimo']}")
+    df.to_pickle(constants.parsed_data_paths["masimo"])
+    print(f"Parsed Masimo data saved to {constants.parsed_data_paths['masimo']}")

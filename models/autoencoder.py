@@ -1,5 +1,6 @@
+from typing import cast
 import numpy as np
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Input, Dense, Conv1D, MaxPooling1D, UpSampling1D, Flatten, Reshape
 from data.prepare import constants
 
@@ -25,11 +26,21 @@ def build(unit_length: int = constants.unit_length) -> Sequential:
     autoencoder.compile(optimizer='adam', loss='mse')
     return autoencoder
 
-def calculate_threshold(ae: Sequential, val: np.ndarray, percentile: float = 95) -> float:
+def from_file(file_path: str) -> Sequential:
+    """Loads the autoencoder model from a file."""
+    return cast(Sequential, load_model(file_path))
+
+def calculate_threshold(ae: Sequential, val: np.ndarray, percentile: float = 95, export: bool = False) -> float:
     """Calculates the 95th percentile MSE threshold on the validation set."""
     reconstructions = ae.predict(val, verbose='silent')
     mse = np.mean(np.power(val - reconstructions, 2), axis=1)
-    return np.percentile(mse, percentile) 
+
+    threshold = np.percentile(mse, percentile)
+    if export:
+        with open("models/out/threshold.txt", "w") as f:
+            f.write(f"{threshold}\n")
+
+    return threshold
 
 def predictor(ae: Sequential, threshold: float):
     """Predicts the reconstruction of a given sample."""

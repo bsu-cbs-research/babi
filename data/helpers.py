@@ -4,7 +4,7 @@ import pandas as pd
 
 def load_capnostream_annotated_data() -> list[list[int]]:
     """Loads the annotated capnostream data in a practical format"""
-    with open(constants.preprocessed_data_paths["capnostream-labelstudio-annotated"], "r") as f:
+    with open(constants.parsed_data_paths["capnostream-labelstudio-annotated"], "r") as f:
         raw = json.load(f)
 
     data: list[list[int]] = []
@@ -20,7 +20,7 @@ def load_capnostream_annotated_data() -> list[list[int]]:
     return data
 
 def load_processed_capnostream() -> pd.DataFrame:
-    return pd.read_pickle(constants.preprocessed_data_paths["capnostream"])
+    return pd.read_pickle(constants.parsed_data_paths["capnostream"])
 
 if __name__ == "__main__":
     annotated_data = load_capnostream_annotated_data()

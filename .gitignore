@@ -1,10 +1,12 @@
 .vscode
 notes.md
 data/raw/*
-data/preprocessed/*
+data/out/parsed/*
 .venv
 __pycache__
 .DS_Store
 babi.egg-info
 data/prepare/pruning/raw
 out/
+program/examples
+program/static

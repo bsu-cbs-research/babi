@@ -1,0 +1,229 @@
+from typing import cast
+import os
+import pandas as pd
+import json
+from data import constants
+
+def _compute_similar_group(trial_name: str):
+    """Compute the most similar trial group to the given trial name based on substring matches."""
+    scores: dict[str, int] = {}
+
+    # score each group based on number of substring matches
+    for group, substrings in constants.capnostream_group_similarity_mappings.items():
+        scores[group] = sum(1 for match in substrings if match in trial_name)
+
+    # get the group with the highest score
+    return max(scores, key=scores.get) # type: ignore
+
+def parse_optimized(file: str, overwrite: bool = False, export: bool = False):
+    """Parse a single raw capnostream file into predictable pkl format (Optimized)"""
+    identifier = file.split(" Capnostream Data")[0]
+    base_raw_path = constants.raw_data_paths["capnostream"]
+    base_parsed_path = os.path.join(constants.parsed_data_dir, "capnostream") 
+    
+    file_path = os.path.join(base_raw_path, file)
+    parsed_data_path = os.path.join(base_parsed_path, f"{identifier}.pkl")
+    
+    print(f"[{identifier}] Parsing Capnostream data from {file_path}")
+
+    if not overwrite and os.path.exists(parsed_data_path):
+        print(f"Parsed Capnostream data for {identifier} already exists at {parsed_data_path}")
+        df = pd.read_pickle(parsed_data_path)
+        return identifier, df
+    
+    # --- 1. Efficiently Read Raw Data and Metadata ---
+    # Use 'openpyxl' engine and specify the rows for metadata/data separation
+    raw_capnostream_df = pd.read_excel(file_path, engine='openpyxl', header=None)
+    
+    # Extract metadata using slicing
+    metadata = {
+        raw_capnostream_df.iloc[r, 0]: raw_capnostream_df.iloc[r, 1] 
+        for r in range(3)
+    }
+    metadata["Date"] = raw_capnostream_df.iloc[8, 0]
+    
+    # The actual data starts at row 6 (0-indexed)
+    data_df = raw_capnostream_df.iloc[6:].copy()
+    
+    # Rename columns for clarity (assuming your data is in columns 1, 2, 3, 4)
+    data_df.columns = ["Marker", "time", "co2_wave", "et_co2", "rr"] + list(data_df.columns[5:])
+    
+    # --- 2. Vectorized Group Index Calculation ---
+    
+    # Identify rows that start a new group (where 'Marker' is a string and others are NaN)
+    # The 'Marker' column is the first column in data_df
+    group_start_mask = data_df["Marker"].apply(lambda x: isinstance(x, str)) 
+    
+    # Extract the trial names from the marker column
+    trial_names = data_df.loc[group_start_mask, "Marker"].apply(
+        lambda x: cast(str, x).split("-")[-1].strip().lower()
+    )
+    
+    # Calculate the group index for each trial start (You'll need to define _compute_similar_group)
+    # This assumes _compute_similar_group and constants.capnostream_groups are available
+    group_indices = trial_names.apply(
+        lambda name: constants.capnostream_groups.index(_compute_similar_group(name))
+    )
+    
+    # Create a new column 'group_index' initialized with NaN
+    data_df['group_index'] = pd.NA
+    
+    # Assign the calculated group indices to the starting rows
+    data_df.loc[group_start_mask, 'group_index'] = group_indices
+    
+    # Use forward-fill (ffill) to propagate the group index down until the next group start
+    data_df['group_index'] = data_df['group_index'].ffill()
+    
+    # --- 3. Vectorized Filtering and Cleaning ---
+    
+    # Drop the marker rows and any rows that didn't have a group yet (if the data starts before the first marker)
+    df = data_df[~group_start_mask & data_df['group_index'].notna()].copy()
+    
+    # Filter out rows where data is missing ("--") or 0 for the relevant columns
+    # Your original check: if any([d == "--" or d == 0 for d in data[:]])
+    
+    # Convert problematic columns to string first to enable consistent comparison
+    df[['time', 'co2_wave', 'et_co2', 'rr']] = df[['time', 'co2_wave', 'et_co2', 'rr']].astype(str)
+    
+    # Create a boolean mask for rows to KEEP (where NONE of the conditions are met)
+    mask_to_keep = (
+        (df["time"] != "--") & (df["time"] != "0") &
+        (df["co2_wave"] != "--") & (df["co2_wave"] != "0") &
+        (df["et_co2"] != "--") & (df["et_co2"] != "0") &
+        (df["rr"] != "--") & (df["rr"] != "0")
+    )
+    
+    df = df[mask_to_keep].copy()
+    
+    # Select only the final required columns
+    df = df[["time", "co2_wave", "et_co2", "rr", "group_index"]]
+    
+    # --- 4. Final Type Conversion (Vectorized) ---
+    df["group_index"] = df["group_index"].astype(int)
+    # Use pd.to_numeric for robust conversion, forcing errors to NaN if need be
+    # Since you checked for "--", simple astype should work on cleaned data
+    df["et_co2"] = df["et_co2"].astype(int)
+    df["rr"] = df["rr"].astype(int)
+    
+    # NOTE: You did not convert 'time' and 'co2_wave' to numeric in your original code, 
+    # but I left the original type conversions in place.
+    
+    # --- 5. Export and Return ---
+    df.attrs = df.attrs | metadata # append metadata
+    
+    if export:
+        if not os.path.exists(os.path.dirname(parsed_data_path)):
+            os.makedirs(os.path.dirname(parsed_data_path))
+        df.to_pickle(parsed_data_path)
+        print(f"[{identifier}] Parsed Capnostream data saved to {parsed_data_path}")
+
+    print(f"[{identifier}] Parsed {len(df)} rows of Capnostream data")
+
+    return identifier, df
+
+def parse_preprocessed_local(file: str, overwrite: bool = False, export: bool = False):
+    """Parse a single raw capnostream file into predictable pkl format"""
+    identifier = file.split(" Capnostream Data")[0] # extract the unique identifier from the filename
+    file_path = os.path.join(constants.raw_data_paths["capnostream"], file)
+    parsed_data_path = os.path.join(constants.parsed_data_dir, "capnostream", f"{identifier}.pkl")
+    print(f"[{identifier}] Parsing Capnostream data from {file_path}")
+
+    if not overwrite and os.path.exists(parsed_data_path):
+        print(f"Parsed Capnostream data for {identifier} already exists at {parsed_data_path}")
+        df = pd.read_pickle(parsed_data_path)
+        return identifier, df
+    
+    raw_capnostream_df = pd.read_excel(file_path) # default to reading the first sheet
+    metadata: dict[str, str | list[str]] = {r[0]: r[1] for r in raw_capnostream_df.iloc[:3, :2].values} | {"Date": raw_capnostream_df.iloc[8, 0]}
+
+    df = pd.DataFrame(columns=["time", "co2_wave", "et_co2", "rr", "group_index"])
+    data_start_row = 6 # data starts at row 6 (0-indexed), after the metadata rows
+
+    current_group_index: int | None = None
+    for _, row in raw_capnostream_df.iloc[data_start_row:, :].iterrows():
+        if type(row.iloc[0]) == str and all(pd.isna(row.iloc[1:])): # all other rows are empty -> must have trial start
+            trial_name = cast(str, row.iloc[0]).split("-")[-1].strip().lower()
+            similar_group = _compute_similar_group(trial_name) # find the most similar group to the current trial name
+            current_group_index = constants.capnostream_groups.index(similar_group)
+            continue
+
+        # only add row if all values (except the first column) are present (not NaN)
+        if not any(pd.isna(row.values)):
+            data = row.values[1:].tolist()  # append the current trial number to the data
+
+            # check if the data contains "--" which indicates a missing value
+            if any([d == "--" or d == 0 for d in data[:]]): # todo: handle data with zeros
+                continue
+
+            df.loc[len(df)] = data + [current_group_index]  # add the data to the DataFrame
+
+    # convert necessary columns to appropriate types
+    df["group_index"] = df["group_index"].astype(int)
+    df["et_co2"] = df["et_co2"].astype(int)
+    df["rr"] = df["rr"].astype(int)
+
+    df.attrs = df.attrs | metadata # append metadata to the DataFrame attributes
+
+    if export: # only export if specified
+        # create directory if it doesn't exist
+        if not os.path.exists(os.path.dirname(parsed_data_path)):
+            os.makedirs(os.path.dirname(parsed_data_path))
+        df.to_pickle(parsed_data_path)
+        print(f"[{identifier}] Parsed Capnostream data saved to {parsed_data_path}")
+
+    print(f"[{identifier}] Parsed {len(df)} rows of Capnostream data")
+
+    return identifier, df
+
+def parse_preprocessed_locals(overwrite: bool = False, export: bool = False):
+    """Combine all individual parsed capnostream files into a single pkl file."""
+    
+    if not overwrite and os.path.exists(constants.parsed_data_paths["capnostream"]):
+        print(f"Combined parsed Capnostream data already exists at {constants.parsed_data_paths['capnostream']}")
+        return
+    
+    print("Parsing all Capnostream files...")
+
+    combined_df = pd.DataFrame(columns=["baby_index", "time", "co2_wave", "et_co2", "rr", "group_index"])
+    combined_metadata: dict[str, dict[str, str | list[str]]] = { } # ids associated with entry metadata
+    current_baby_identifier_index = 0
+    for path in [f for f in os.listdir(os.path.join(constants.raw_data_dir, "capnostream")) if f.endswith(".xlsx")]:
+        identifier, df = parse_preprocessed_local(path, overwrite=overwrite, export=export) # ensure the individual file is parsed
+        df.insert(0, "baby_index", current_baby_identifier_index)
+        combined_metadata[identifier] = cast(dict, df.attrs) | {"index": current_baby_identifier_index}
+        combined_df = pd.concat([combined_df, df], ignore_index=True)
+        current_baby_identifier_index += 1
+
+    combined_df.attrs = {} | combined_metadata
+    combined_df.to_pickle(constants.parsed_data_paths["capnostream"])
+
+    print(f"Combined parsed Capnostream data saved to {constants.parsed_data_paths['capnostream']}")
+
+def export_label_studio(overwrite: bool = False):
+    """Prepare the parsed capnostream data for import into Label Studio."""
+
+    if not overwrite and os.path.exists(constants.parsed_data_paths["capnostream-labelstudio"]):
+        print(f"Label Studio Capnostream data already exists at {constants.parsed_data_paths['capnostream-labelstudio']}")
+        return
+    
+    df: pd.DataFrame = pd.read_pickle(constants.parsed_data_paths["capnostream"])
+    groups = df.groupby(["baby_index", "group_index"])
+
+    tasks: list[dict] = []
+    for (baby_index, group_index), group in groups:
+        co2_wave = group["co2_wave"].values.tolist()
+        task = {
+            "id": f"baby-{baby_index}-group-{group_index}",
+            "data": {"ts":{"time": [round(i * 0.05, 2) for i in range(len(co2_wave))], "co2": co2_wave}}, 
+            "meta": {"baby_index": int(baby_index), "group_index": int(group_index)}
+        }
+        tasks.append(task)
+
+    with open(constants.parsed_data_paths["capnostream-labelstudio"], "w") as f:
+        json.dump(tasks, f)
+
+    print(f"Label Studio Capnostream data saved to {constants.parsed_data_paths['capnostream-labelstudio']}")
+        
+if __name__ == "__main__":
+    parse_preprocessed_locals(overwrite=False)
+    export_label_studio(overwrite=False)

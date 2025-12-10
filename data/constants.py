@@ -5,12 +5,13 @@ raw_data_dir = "data/raw/"
 raw_data_paths = {k: os.path.join(raw_data_dir, v) for k, v in {
     "mocap": "45_Head 1 MoCap Data.tsv",
     "capnostream": "capnostream",
-    "masimo": "BB-003-2 Masimo Data.xlsx"
+    "masimo": "BB-003-2 Masimo Data.xlsx",
+    "program": "program",
 }.items()}
 
-preprocessed_data_dir = "data/preprocessed/"
+parsed_data_dir = "data/out/parsed/"
 
-preprocessed_data_paths = {k: os.path.join(preprocessed_data_dir, v) for k, v in {
+parsed_data_paths = {k: os.path.join(parsed_data_dir, v) for k, v in {
     "mocap": "mocap.pkl",
     "mocap-tuples": "mocap-tuples.pkl",
     "capnostream": "capnostream.pkl",
