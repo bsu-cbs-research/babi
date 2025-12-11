@@ -21,4 +21,5 @@ dependencies = [
     "setuptools>=80.9.0",
     "tensorflow>=2.20.0",
     "tk>=0.1.0",
+    "ttkbootstrap>=1.19.2",
 ]

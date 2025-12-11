@@ -1,24 +1,25 @@
-from typing import Optional, Callable, TypedDict, Literal, Any
+from typing import Optional, Callable, Literal, Any
 import os
 import threading
 import queue
 import pandas as pd
-import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog
-from tkinter import messagebox
-from program.parse import capnostream
+import numpy as np
+from tkinter import filedialog, messagebox, PhotoImage
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from program import helpers
 from models import autoencoder, processing
+from data.prepare import constants
 
 type QueueTags = Literal["success", "error", "status"]
 type QueueItem = tuple[QueueTags, Any]
 type QueueCallback = Optional[Callable[[Any], None]]
 type QueueCallbacks = dict[QueueTags, QueueCallback]
 
-class FileModifierApp:
-    def __init__(self, root: tk.Tk) -> None:
-        self.root: tk.Tk = root
-        self.root.title("Simple File Modifier")
+class BABIDataAnalysisApp:
+    def __init__(self, root: ttk.Window) -> None:
+        self.root: ttk.Window = root
+        self.root.title("BABI Data Analysis")
         
         # window geometry and centering
         window_width: int = 400
@@ -30,11 +31,8 @@ class FileModifierApp:
         self.root.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
         self.root.resizable(False, False)
 
-        self.file_path: Optional[str] = None
-        self.modified_content: Optional[bytes] = None
-
         self.main_frame: ttk.Frame = ttk.Frame(self.root, padding="20")
-        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        self.main_frame.pack(fill=BOTH, expand=True)
 
         self.queue: queue.Queue[QueueItem] = queue.Queue()
 
@@ -43,24 +41,18 @@ class FileModifierApp:
         self.min, self.max = [float(v) for v in open("program/static/scaling.txt").read().strip().split(',')]
 
         self.batch_predict = autoencoder.batch_predictor(self.model, self.threshold)
-
         self.show_start_screen()
 
     def show_start_screen(self) -> None:
-        # Clear frame
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+        self._reset_canvas()
+        ttk.Label(self.main_frame, text="BABI Data Analysis", font=("Helvetica", 14)).pack(pady=(20, 0))
+        ttk.Label(self.main_frame, text="Upload a raw capnostream (.csv) file to begin").pack(pady=(8, 0))
+        ttk.Button(self.main_frame, text="Upload File", command=self._handle_file_upload).pack(pady=40)
 
-        self.file_path = None
-        self.modified_content = None
+    def _run_thread(self, thread: threading.Thread, callbacks: QueueCallbacks) -> None:
+        thread.start()
+        self.root.after(100, lambda: self._poll_queue(callbacks))
 
-        label: ttk.Label = ttk.Label(self.main_frame, text="Upload a file to modify", font=("Helvetica", 14))
-        label.pack(pady=20)
-
-        upload_btn: ttk.Button = ttk.Button(self.main_frame, text="Upload File", command=self._handle_file_upload)
-        upload_btn.pack(pady=10)
-
-    # todo: combine into single run-on-thread function
     def _poll_queue(self, callbacks: QueueCallbacks) -> None:
         try:
             item = self.queue.get_nowait()
@@ -71,101 +63,106 @@ class FileModifierApp:
                 if tag == "success" or tag == "error": return
         except queue.Empty:
             pass
-        # Keep polling without blocking the UI
+        
         self.root.after(100, lambda: self._poll_queue(callbacks))
     
     def _handle_file_upload(self) -> None:
         file_path: str = filedialog.askopenfilename()
-        if not file_path: 
-            messagebox.showerror("Error", "No file selected")
-            return
+        if not file_path: return
         
-        def _parse_file(file_path: str) -> None:
+        def _process_file(file_path: str) -> None:
             extension = os.path.splitext(file_path)[1]
             try: 
                 if extension == ".xlsx": 
-                    self.queue.put(("status", "Parsing preprocessed data..."))
-                    df = capnostream.parse_preprocessed_file(file_path)
+                    self.queue.put(("status", "Parsing..."))
+                    df = helpers.parse_preprocessed_capnostream_file(file_path)
                     self.queue.put(("success", df))
                 elif extension == ".csv": 
-                    self.queue.put(("status", "Parsing raw data..."))
-                    df = capnostream.parse_raw_file(file_path)
+                    self.queue.put(("status", "Parsing..."))
+                    df = helpers.parse_raw_capnostream_file(file_path)
+
+                    self.queue.put(("status", "Converting..."))
+                    signal = df["co2_wave"].to_numpy()
+                    original_length = len(signal)
+
+                    units = processing.signal_to_units(signal, self.min, self.max)
+
+                    self.queue.put(("status", "Analyzing..."))
+                    _, _, labels = self.batch_predict(units)
+                    self.queue.put(("status", "Reformatting..."))
+
+                    # create analysis blocks 
+                    labels = np.concatenate([labels.astype(int), [0] * (original_length - len(labels) + constants.unit_length)]) # pad labels
+                    normative_label_indices = np.where(labels == 1)[0] # gather indices of normative labels
+                    insertion_block = np.full(constants.unit_length, 1) # create block of ones
+                    for idx in normative_label_indices: labels[idx : idx + constants.unit_length] = insertion_block
+                    labels = labels[:original_length] # trim back to original length if overflow
+                        
+                    df["co2_wave_labels"] = labels 
                     self.queue.put(("success", df))
                 else: raise ValueError(f"Unsupported file format, got {extension} expected .xlsx, .csv")
             except Exception as e: self.queue.put(("error", str(e)))
 
         # show progress screen
         progress_label, _ = self.show_progress_screen()
-        
-        threading.Thread(target=_parse_file, args=(file_path,), daemon=True).start()
+        thread = threading.Thread(target=_process_file, args=(file_path,), daemon=True)
 
-        def _on_error(data: str) -> None:
+        def _on_success(df: pd.DataFrame):
+            self.show_download_screen(df)
+
+        def _on_error(data: str):
             self.show_start_screen()
             messagebox.showerror("Error", data)
 
-        def _on_status(data: str) -> None:
+        def _on_status(data: str):
             progress_label.configure(text=data)
 
-        self.root.after(100, lambda: self._poll_queue({ "success": self._handle_file_analysis, "error": _on_error, "status": _on_status }))
+        self._run_thread(thread, { "success": _on_success, "error": _on_error, "status": _on_status })
 
-    def _handle_file_analysis(self, df: pd.DataFrame) -> None:
-        units = processing.signal_to_units(df["co2_wave"].to_numpy(), self.min, self.max)
-        recons, errors, labels = self.batch_predict(units) # todo: move to thread, update loading status
-        print(len(labels)) # todo: time-align labels (1 for good/0 for bad)
-        self.show_download_screen()
+    def show_download_screen(self, df: pd.DataFrame):
+        self._reset_canvas()
 
-    def show_download_screen(self) -> None:
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+        ttk.Label(self.main_frame, text="Analysis Complete", font=("Helvetica", 14)).pack(pady=(20, 0))
+        ttk.Label(self.main_frame, text="Download the modified file below.").pack(pady=(8, 0))
 
-        label: ttk.Label = ttk.Label(self.main_frame, text="File Modified!", font=("Helvetica", 14))
-        label.pack(pady=20)
+        def _save_csv() -> None:
+            try:
+                save_path: str = filedialog.asksaveasfilename(
+                    initialfile="annotated-raw.csv", # todo: use real file name
+                    defaultextension=".csv",
+                    filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+                )
+                if not save_path: return
+                df.to_csv(save_path, index=False) 
+                messagebox.showinfo("Success", "CSV saved successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save CSV: {e}")
 
-        if self.file_path:
-            filename: str = os.path.basename(self.file_path)
-            info_label: ttk.Label = ttk.Label(self.main_frame, text=f"Original: {filename}")
-            info_label.pack(pady=5)
-
-        download_btn: ttk.Button = ttk.Button(self.main_frame, text="Download Modified File", command=self.save_file)
-        download_btn.pack(pady=10)
-
-        reset_btn: ttk.Button = ttk.Button(self.main_frame, text="Back to Start", command=self.show_start_screen)
-        reset_btn.pack(pady=10)
+        ttk.Button(self.main_frame, text="Download", command=_save_csv).pack(pady=(40, 0))
+        ttk.Button(self.main_frame, text="Back", command=self.show_start_screen, style=SECONDARY).pack(pady=10)
 
     def show_progress_screen(self):
-        for widget in self.main_frame.winfo_children(): widget.destroy()
+        self._reset_canvas()
 
-        label: ttk.Label = ttk.Label(self.main_frame, text="Processing...")
-        label.pack(pady=20)
+        label = ttk.Label(self.main_frame, text="Processing...")
+        label.pack(pady=(80, 0))
 
-        progress: ttk.Progressbar = ttk.Progressbar(self.main_frame, mode='indeterminate')
-        progress.pack(pady=10, fill=tk.X)
+        progress = ttk.Progressbar(self.main_frame, mode='indeterminate')
+        progress.pack(pady=(30, 0), fill=X)
         progress.start()
 
         return label, progress
 
-    def save_file(self) -> None:
-        if self.modified_content:
-            # Suggest a filename based on the original
-            initial_file: str = "modified_" + os.path.basename(self.file_path) if self.file_path else "modified_file"
-            
-            save_path: str = filedialog.asksaveasfilename(initialfile=initial_file)
-            if save_path:
-                try:
-                    with open(save_path, 'wb') as f:
-                        f.write(self.modified_content)
-                    messagebox.showinfo("Success", "File saved successfully!")
-                except Exception as e:
-                    messagebox.showerror("Error", f"Failed to save file: {e}")
-
     def on_closing(self):
-        """Properly shuts down the executor when the window closes."""
         self.root.destroy()
 
+    def _reset_canvas(self):
+        for widget in self.main_frame.winfo_children(): widget.destroy()
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = FileModifierApp(root)
-    photo = tk.PhotoImage(file="program/static/program-icon@1x.png")
+    root = ttk.Window(themename="darkly")
+    app = BABIDataAnalysisApp(root)
+    photo = PhotoImage(file="program/static/program-icon@1x.png")
     root.iconphoto(True, photo) 
     root.protocol("WM_DELETE_WINDOW", app.on_closing) 
 
