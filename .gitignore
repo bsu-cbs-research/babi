@@ -10,3 +10,6 @@ data/prepare/pruning/raw
 out/
 program/examples
 program/static
+build/
+dist/
+*.spec

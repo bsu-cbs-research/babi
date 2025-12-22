@@ -1,9 +1,6 @@
 import os
 import pandas as pd
 
-def parse_preprocessed_capnostream_file(file_path: str):
-    raise ValueError("Preprocessed files are not supported yet")
-
 def parse_raw_capnostream_file(file_path: str):
     """Parse a single raw capnostream file into predictable pkl format"""
     with open(file_path, "r", encoding="utf-16") as f:
@@ -24,7 +21,7 @@ def parse_raw_capnostream_file(file_path: str):
 
     df = pd.read_csv(file_path, encoding="utf-16", sep="\t", names=columns, skiprows=starting_row)
     df.attrs = {} | metadata
-    df = df[["Date", "Time", "CO₂ Wave"]].rename(columns={"Date": "date", "Time": "time", "CO₂ Wave": "co2_wave"})
+    df = df[["Date", "Time", "CO₂ Wave", "EtCO₂", "RR"]].rename(columns={"Date": "date", "Time": "time", "CO₂ Wave": "co2_wave"})
     df = df[df["co2_wave"] != "--"].copy()
     df["co2_wave"] = df["co2_wave"].astype(float)
     return df #? handle streaks (continuous data that stops then starts again)?
