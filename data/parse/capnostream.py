@@ -18,7 +18,7 @@ def _compute_similar_group(trial_name: str):
 def parse_preprocessed_local(file: str, overwrite: bool = False, export: bool = False):
     """Parse a single raw capnostream file into predictable pkl format"""
     identifier = file.split(" Capnostream Data")[0] # extract the unique identifier from the filename
-    file_path = os.path.join(constants.raw_data_paths["capnostream"], file)
+    file_path = os.path.normpath(os.path.join(constants.raw_data_paths["capnostream"], file))
     parsed_data_path = os.path.join(constants.parsed_data_dir, "capnostream", f"{identifier}.pkl")
     print(f"[{identifier}] Parsing Capnostream data from {file_path}")
 
