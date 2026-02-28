@@ -13,3 +13,4 @@ program/static
 build/
 dist/
 *.spec
+local/
