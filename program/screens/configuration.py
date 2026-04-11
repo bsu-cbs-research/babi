@@ -2,13 +2,11 @@ from typing import TYPE_CHECKING
 import os
 import threading
 from tkinter import messagebox
-import pandas as pd
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 
-import pipeline
-
 if TYPE_CHECKING:
+    import pandas as pd
     from program.app import BABIDataAnalysisApp
 
 
@@ -115,6 +113,7 @@ class Screen(ttk.Frame):
         def _run_pipeline() -> None:
             try:
                 from program.app import resource_path  # local import to avoid cycle
+                import pipeline
 
                 static_dir = resource_path(os.path.join("program", "static"))
 
@@ -136,7 +135,7 @@ class Screen(ttk.Frame):
         thread = threading.Thread(target=_run_pipeline, daemon=True)
 
         def _on_success(
-            payload: tuple[pd.DataFrame, pd.DataFrame],
+            payload: tuple["pd.DataFrame", "pd.DataFrame"],
         ) -> None:
             motion_df, capnostream_df = payload
             self.controller.context.motion_df = motion_df

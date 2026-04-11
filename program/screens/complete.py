@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 import os
 from tkinter import filedialog, messagebox
-import pandas as pd
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 
 if TYPE_CHECKING:
+    import pandas as pd
     from program.app import BABIDataAnalysisApp
 
 

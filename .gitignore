@@ -17,3 +17,5 @@ dist/
 local/
 data/testing/
 *.png
+*.egg-info
+*.whl

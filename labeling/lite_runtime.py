@@ -26,15 +26,10 @@ def _load_interpreter_class():
     except ImportError:
         pass
 
-    try:
-        from tensorflow.lite import Interpreter
-
-        return Interpreter, "tensorflow"
-    except ImportError as exc:
-        raise LiteRuntimeImportError(
-            "No TensorFlow Lite runtime is installed. Install ai-edge-litert "
-            "(preferred) or tflite-runtime, or provide tensorflow as a fallback."
-        ) from exc
+    raise LiteRuntimeImportError(
+        "No TensorFlow Lite runtime is installed. Install ai-edge-litert "
+        "(preferred) or tflite-runtime."
+    )
 
 
 @dataclass
