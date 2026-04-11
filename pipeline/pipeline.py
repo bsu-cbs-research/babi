@@ -1,78 +1,32 @@
+import os
 import labeling, alignment, data
-from pipeline.containers import CapnostreamContainer, MotionContainer
-import numpy as np
 
-class ProcessingPipeline:
-    def __init__(self) -> None:
-        self.temp = "/tmp"
-        self.validated = False
-        self.processed = False
-        self.labeled = False
-        self.aligned = False
-        self.capnostream = CapnostreamContainer()
-        self.motion = MotionContainer()
-        pass
-    
-    def _include_file(self, file: str):
-        if file.endswith(".xlsx"): self.capnostream.path = file
-        elif file.endswith(".tsv"): self.motion.paths.add(file)
-        else:  raise ValueError("Unsupported file type: {}".format(file))
-    
-    def _validate(self):
-        if not self.capnostream.path: raise ValueError("Capnostream data is missing")
-        if len(self.motion.paths) == 0: raise ValueError("Motion data is missing")
-        # validate the data (check for missing values, check for correct format, etc.)
-        data.validating.capnostream(self.capnostream.path)
-        data.validating.motion(self.motion.paths)
-        self.validated = True
-    
-    def _process(self):
-        if not self.validated: raise ValueError("Data is not validated")
-        assert self.capnostream.path, "Capnostream data path is not set"
-        assert self.motion.paths, "Motion data paths are not set"
-        # process the data (e.g. filter, normalize, etc.)
-        data.processing.capnostream(self.capnostream.path)
-        data.processing.motion(self.motion.paths)
-        self.processed = True
-    
-    def _label(self):
-        if not self.processed: raise ValueError("Data is not processed")
-        assert self.capnostream.path, "Capnostream data path is not set"
+CO2_COLUMN_INDEX = 2
 
-        # perform capno inference (e.g. calculate respiratory rate, tidal volume, etc.)
-        self.labeled = labeling.label(np.array([]))
-    
-    def _align(self):
-        if not self.processed: raise ValueError("Data is not processed")
-        assert self.motion.paths, "Motion data paths are not set"
-        self.aligned = alignment.static()
+def execute(pkg: str, offset: int = 0):
+    capnostream_path = os.path.join(pkg, next((f for f in os.listdir(pkg) if f.endswith(".xlsx")), ""))
+    motion_paths = set([os.path.join(pkg, f) for f in os.listdir(pkg) if f.endswith(".tsv")])
 
-    def _output(self):
-        return self
-    
-    def execute(self, pkg: str, offset: int = 0):
-        files = os.listdir(pkg)
-        self._include_file(os.path.join(pkg, next((f for f in files if f.endswith(".xlsx")), "")))
-        for m in [f for f in files if f.endswith(".tsv")]: self._include_file(os.path.join(pkg, m))
+    # parsing
+    assert capnostream_path, "Capnostream data path is not set"
+    capnostream_data = data.parsing.capnostream(capnostream_path)
+    motion_data = data.parsing.motion(motion_paths)
 
-        self.offset = offset
+    # labeling
+    assert capnostream_data is not None, "Capnostream data is not set"
+    labels = labeling.label(capnostream_data.iloc[:, CO2_COLUMN_INDEX].to_numpy())
+    print(len(labels), len(capnostream_data))
 
-        self._validate()
-        self._process()
-        self._label()
-        self._align()
+    capnostream_data["co2_valid"] = labels
 
-        return self._output()
+    # alignment
+    assert labels is not None, "Labels are not set"
+    assert capnostream_data is not None, "Capnostream data is not set"
+    assert motion_data is not None, "Motion data is not set"
+    labeled_motion, capno2 = alignment.static(capnostream_data, motion_data, offset)
 
-        # self.include_file("capnostream_data.xlsx").include_file("motion_data.tsv").include_offset(offset).validate().process().label().align().output()
-    
-    def reset(self):
-        self.capnostream = CapnostreamContainer()
-        self.motion = MotionContainer()
-        self.offset = 0
+    # # output
+    return capnostream_data, labeled_motion, capno2
 
 if __name__ == "__main__":   
-    import os 
-    pipeline = ProcessingPipeline()
-    pkg = os.path.join("data", "testing", "p1", "co2.xlsx")
-    pipeline.execute(pkg, offset=360)
+    execute(os.path.join("data", "testing", "p1"), offset=360)
