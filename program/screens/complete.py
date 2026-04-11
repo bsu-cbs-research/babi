@@ -139,6 +139,8 @@ class Screen(ttk.Frame):
     def _extract_capnostream_metadata(path: str) -> list[str]:
         """Read the top section of the xlsx and keep all metadata lines before data headers."""
         try:
+            import pandas as pd
+
             raw = pd.read_excel(path, header=None, nrows=40)
         except Exception as e:  # noqa: BLE001
             return [f"<Failed to read capnostream metadata: {e}>"]
