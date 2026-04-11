@@ -16,10 +16,12 @@ jobs:
             artifact_name: babi-macos
             python: "3.12"
             build_script: ./scripts/build_macos.sh
+            package_step: macos
           - os: windows-latest
             artifact_name: babi-windows
             python: "3.12"
             build_script: bash ./scripts/build_windows.sh
+            package_step: windows
 
     runs-on: ${{ matrix.os }}
 
@@ -49,9 +51,35 @@ jobs:
       - name: Build app
         run: ${{ matrix.build_script }}
 
+      - name: Package macOS app
+        if: matrix.package_step == 'macos'
+        shell: bash
+        run: |
+          mkdir -p release
+          tar -czf "release/babi-macos.tar.gz" -C dist "BABI Data Analysis.app"
+
+      - name: Package Windows app
+        if: matrix.package_step == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          Compress-Archive -Path "dist/BABI Data Analysis/*" -DestinationPath "release/babi-windows.zip" -Force
+
+      - name: Build Windows onefile app
+        if: matrix.package_step == 'windows'
+        shell: bash
+        run: bash ./scripts/build_windows_onefile.sh
+
+      - name: Package Windows onefile app
+        if: matrix.package_step == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          Compress-Archive -Path "dist/BABI Data Analysis Onefile.exe" -DestinationPath "release/babi-windows-onefile.zip" -Force
+
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/BABI Data Analysis*
+          path: release/*
           if-no-files-found: error
