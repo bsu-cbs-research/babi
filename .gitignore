@@ -14,6 +14,7 @@ labeling/out/model.keras
 build/
 dist/
 *.spec
+!BABI Data Analysis.spec
 local/
 data/testing/
 *.png
