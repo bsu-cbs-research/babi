@@ -3,25 +3,25 @@ from typing import Optional
 
 import numpy as np
 
-from labeling import autoencoder, processing
+from labeling import lite_runtime, processing
 from data.prepare import constants
 
 # Default location of the bundled model artifacts, relative to cwd.
 _DEFAULT_STATIC_DIR = os.path.join("program", "static")
 
 # Lazily-loaded, cached model artifacts keyed by resolved static_dir so repeated
-# calls (e.g. from the UI) don't reload Keras on every invocation.
-_ARTIFACT_CACHE: dict[str, tuple[object, float, float, float]] = {}
+# calls (e.g. from the UI) don't reload the interpreter on every invocation.
+_ARTIFACT_CACHE: dict[str, tuple[lite_runtime.LiteModel, float, float, float]] = {}
 
 
 def _load_artifacts(static_dir: str):
-    """Load (or fetch cached) model, threshold, and (min, max) scaling."""
+    """Load (or fetch cached) tflite model, threshold, and (min, max) scaling."""
     key = os.path.abspath(static_dir)
     cached = _ARTIFACT_CACHE.get(key)
     if cached is not None:
         return cached
 
-    model_path = os.path.join(static_dir, "model.keras")
+    model_path = os.path.join(static_dir, "model.tflite")
     threshold_path = os.path.join(static_dir, "threshold.txt")
     scaling_path = os.path.join(static_dir, "scaling.txt")
 
@@ -30,10 +30,10 @@ def _load_artifacts(static_dir: str):
             raise FileNotFoundError(
                 f"Labeling artifact not found: {p}. "
                 f"Pass static_dir=... pointing at the directory containing "
-                "model.keras, threshold.txt, and scaling.txt."
+                "model.tflite, threshold.txt, and scaling.txt."
             )
 
-    model = autoencoder.from_file(model_path)
+    model = lite_runtime.load_model(model_path)
     with open(threshold_path) as f:
         threshold = float(f.read().strip())
     with open(scaling_path) as f:
@@ -50,7 +50,7 @@ def label(signal: np.ndarray, static_dir: Optional[str] = None) -> np.ndarray:
     Parameters
     ----------
     signal: 1-D array of raw CO2 wave samples.
-    static_dir: directory containing model.keras, threshold.txt, scaling.txt.
+    static_dir: directory containing model.tflite, threshold.txt, scaling.txt.
         Defaults to ``program/static`` (relative to cwd) for CLI usage. The
         UI should pass ``resource_path("program/static")`` so the bundled
         PyInstaller app can find the files via ``_MEIPASS``.
@@ -58,7 +58,7 @@ def label(signal: np.ndarray, static_dir: Optional[str] = None) -> np.ndarray:
     resolved_static_dir = static_dir or _DEFAULT_STATIC_DIR
     model, threshold, min_val, max_val = _load_artifacts(resolved_static_dir)
 
-    batch_predict = autoencoder.batch_predictor(model, threshold)
+    batch_predict = lite_runtime.batch_predictor(model, threshold)
     original_length = len(signal)
     units = processing.signal_to_units(signal, min_val, max_val)
     _, _, labels = batch_predict(units)

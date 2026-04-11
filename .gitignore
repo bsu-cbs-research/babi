@@ -9,7 +9,8 @@ babi.egg-info
 data/prepare/pruning/raw
 out/
 program/examples
-program/static
+program/static/model.keras
+labeling/out/model.keras
 build/
 dist/
 *.spec
