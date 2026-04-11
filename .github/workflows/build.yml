@@ -35,10 +35,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .[training]
+          python -m pip install .
 
-      - name: Convert Keras model to TFLite
-        run: python scripts/convert_model_to_tflite.py
+      - name: Verify TFLite model artifact exists
+        shell: bash
+        run: |
+          if [[ ! -f "program/static/model.tflite" ]]; then
+            echo "Missing program/static/model.tflite"
+            echo "Commit the TFLite model artifact, or add a CI conversion step with a committed model.keras."
+            exit 1
+          fi
 
       - name: Build app
         run: ${{ matrix.build_script }}
