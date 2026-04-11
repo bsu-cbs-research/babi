@@ -109,8 +109,11 @@ class BABIDataAnalysisApp:
 if __name__ == "__main__":
     root = ttk.Window(themename="darkly")
     app = BABIDataAnalysisApp(root)
-    photo = PhotoImage(file=resource_path("program/static/program-icon@1x.png"))
-    root.iconphoto(True, photo) 
+    try:
+        photo = PhotoImage(file=resource_path("program/static/program-icon@1x.png"))
+        root.iconphoto(True, photo)
+    except Exception:
+        pass
     root.protocol("WM_DELETE_WINDOW", app.on_closing) 
 
     root.mainloop()
