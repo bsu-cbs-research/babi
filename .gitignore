@@ -18,5 +18,6 @@ dist/
 local/
 data/testing/
 *.png
+!program/static/program-icon@1x.png
 *.egg-info
 *.whl
