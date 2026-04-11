@@ -2,6 +2,19 @@ name: Build Desktop Artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish build outputs to a GitHub Release"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      release_tag:
+        description: "Release tag to publish to (required when publish_release=true, e.g. v0.1.2)"
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -90,7 +103,7 @@ jobs:
           if-no-files-found: error
 
   publish_release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_release == 'true' && github.event.inputs.release_tag != '')
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -104,6 +117,8 @@ jobs:
       - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || github.event.inputs.release_tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             release-assets/*.tar.gz
             release-assets/*.zip

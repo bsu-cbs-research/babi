@@ -1,5 +1,5 @@
 import numpy as np
-from data.prepare import load, augmentation, constants
+from data.prepare import augmentation, constants
 from numpy.lib.stride_tricks import sliding_window_view
 
 def _corrupt(sample: np.ndarray, noise: float = 0.015) -> np.ndarray:
@@ -32,6 +32,8 @@ def get_training_dataset(
         export_min_max: bool = False
     ) -> tuple[tuple[np.ndarray, np.ndarray], np.ndarray, np.ndarray, np.ndarray, tuple[float, float]]:
     """Get the training dataset with samples stretched to unit_length (in samples)"""
+    from data.prepare import load
+
     normative_signals = load.normative()
     abnormal_signals = load.abnormal()
 
@@ -51,6 +53,8 @@ def get_training_dataset(
 
 def get_abnormal_testing_dataset(g_min: float, g_max: float) -> np.ndarray:
     """Get the abnormal testing dataset with samples stretched to unit_length (in samples)"""
+    from data.prepare import load
+
     signals = load.abnormal()
     signals_scaled = (signals - g_min) / (g_max - g_min)
     return signals_scaled
