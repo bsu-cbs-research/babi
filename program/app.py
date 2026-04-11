@@ -1,14 +1,16 @@
-from typing import Optional, Callable, Literal, Any, cast
+from typing import Optional, Callable, Literal, Any, cast, TYPE_CHECKING
 from dataclasses import dataclass
 import os
 import sys
 import threading
 import queue
-import io
 from tkinter import PhotoImage
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from program.screens import start, configuration, progress, complete
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -29,13 +31,17 @@ type ScreenName = Literal["start", "configuration", "progress", "complete"]
 
 @dataclass
 class ProgramContext:
-    file_path: Optional[str] = None
-    xlsx_buffer: Optional["io.BytesIO"] = None
+    folder_path: Optional[str] = None
+    offset: Optional[float] = None
+    motion_df: Optional["pd.DataFrame"] = None
+    capnostream_df: Optional["pd.DataFrame"] = None
     progress_label: Optional[ttk.Label] = None
 
     def reset(self):
-        self.file_path = None
-        self.xlsx_buffer = None
+        self.folder_path = None
+        self.offset = None
+        self.motion_df = None
+        self.capnostream_df = None
         self.progress_label = None
 
 class BABIDataAnalysisApp:

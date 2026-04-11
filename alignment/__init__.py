@@ -15,16 +15,8 @@ def automatic(capnostream: np.ndarray, motion: np.ndarray):
 
 
 def static(capnostream: pd.DataFrame, motion: pd.DataFrame, offset: int):
-    capnostream["Time"] = pd.to_datetime(capnostream["Time"])
-    capnostream["Time"] = capnostream["Time"] + pd.Timedelta(seconds=offset)
-    # 3. Perform the "As-Of" Join
-    # For every row in df_100, find the closest row in df_20
-    # result = pd.merge_asof(
-    #     motion, 
-    #     capnostream, 
-    #     on='ts', 
-    #     direction='nearest'  # Matches the absolute closest timestamp
-    # )
-
-    # Your new labels are now in result['label']
+    capnostream["time"] = capnostream["time"] + pd.to_timedelta(offset, unit="s")
+    labels_by_time = pd.Series(capnostream["co2_valid"].to_numpy(), index=pd.DatetimeIndex(capnostream["time"]))
+    motion_labels = labels_by_time.reindex(motion.index,method="nearest",tolerance=pd.Timedelta("25ms")).fillna(0).astype(int)
+    motion["co2_valid"] = motion_labels.to_numpy()
     return motion, capnostream
