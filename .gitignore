@@ -15,6 +15,7 @@ build/
 dist/
 *.spec
 !BABI Data Analysis.spec
+!BABI Data Analysis Onefile.spec
 local/
 data/testing/
 *.png

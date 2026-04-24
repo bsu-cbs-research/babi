@@ -1,5 +1,6 @@
 import json
 from data import constants
+from globals import constants as gconstants
 import pandas as pd
 
 def load_capnostream_annotated_data() -> list[list[int]]:
@@ -14,7 +15,7 @@ def load_capnostream_annotated_data() -> list[list[int]]:
         for annotation in entry["annotations"]:
             for result in annotation["result"]:
                 value = result["value"]
-                start, end = (int(i * constants.capnostream_sampling_rate) for i in (value["start"], value["end"]))
+                start, end = (int(i * gconstants.capnostream_sr) for i in (value["start"], value["end"]))
                 data.append(waveform[start:end])
 
     return data

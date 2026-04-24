@@ -21,7 +21,6 @@ parsed_data_paths = {k: os.path.join(parsed_data_dir, v) for k, v in {
     "masimo": "masimo.pkl"
 }.items()}
 
-capnostream_sampling_rate = 20 # capnostream data is sampled at 20 Hz
 capnostream_group_similarity_mappings: dict[str, list[str]] = {k: v + k.split() for k,v in {
     "flat supine": ["fs"],
     "head neck flexion supine": ["hn", "head/neck"],

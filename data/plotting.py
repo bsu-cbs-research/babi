@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from data import constants
+from globals import constants
 
 def plot_capnostream_waveform(
         data: pd.Series | np.ndarray, 
@@ -14,9 +14,9 @@ def plot_capnostream_waveform(
     start, end = view_range if view_range is not None else (0, len(data))
     assert 0 <= start < end <= len(data), f"view_range must be within the data length (0 to {len(data)}"
 
-    signal_start, signal_end = int(start * constants.capnostream_sampling_rate), int(end * constants.capnostream_sampling_rate)
+    signal_start, signal_end = int(start * constants.capnostream_sr), int(end * constants.capnostream_sr)
     
-    time = (np.arange(len(data)) / constants.capnostream_sampling_rate)[signal_start:signal_end]
+    time = (np.arange(len(data)) / constants.capnostream_sr)[signal_start:signal_end]
     data = data[signal_start:signal_end]
 
     plt.figure(figsize=(24, 6))

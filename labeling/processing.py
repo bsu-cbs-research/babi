@@ -47,7 +47,7 @@ def get_training_dataset(
     abnormal_test_scaled = (abnormal_signals - g_min) / (g_max - g_min)
 
     if export_min_max:
-        with open("models/out/scaling.txt", "w") as f: f.write(f"{g_min},{g_max}\n")
+        with open("program/static/scaling.txt", "w") as f: f.write(f"{g_min},{g_max}\n")
 
     return (_corrupt(train_scaled), train_scaled), val_scaled, normative_test_scaled, abnormal_test_scaled, (g_min, g_max)
 

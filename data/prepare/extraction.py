@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from data import constants
+from globals import constants
 import hashlib
 
 @dataclass
@@ -15,14 +15,14 @@ class ExtractionConstraints:
     mean_max_amplitude_error_percentage: allowed % error between mean amplitude and unit max amplitude\n
     max_search_before_discard: if no plateau found within this length, discard unit and find the next one (samples)
     """
-    min_length: int = int(0.4 * constants.capnostream_sampling_rate)
+    min_length: int = int(0.4 * constants.capnostream_sr)
     slope_window: int = 4
     plateau_slope_tolerance: float = 0.01
     min_amplitude: int = 16
     plateau_vertical_tolerance: int = 2
     max_units_from_zero: int = 5
     mean_max_amplitude_error_percentage: float = 0.7
-    max_search_before_discard: int = int(1.5 * constants.capnostream_sampling_rate)
+    max_search_before_discard: int = int(1.5 * constants.capnostream_sr)
 
     def hash(self) -> str:
         formatted_string = f"{self.min_length}_{self.slope_window}_{self.plateau_slope_tolerance}_{self.min_amplitude}_{self.plateau_vertical_tolerance}_{self.max_units_from_zero}_{self.mean_max_amplitude_error_percentage}_{self.max_search_before_discard}"
@@ -104,10 +104,10 @@ def extract_unit_markers(signal: np.ndarray, constraints = ExtractionConstraints
     # min_unit_length = np.min([end-start for start, end in units])
     # total_unit_length = np.sum([end-start for start, end in units])
 
-    # print(f"Min unit length: {min_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
-    # print(f"Max unit length: {max_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
-    # print(f"Mean unit length: {mean_unit_length/constants.capnostream_sampling_rate:.2f} seconds.")
-    # print(f"Total unit length: {total_unit_length/constants.capnostream_sampling_rate/60:.2f} minutes.")
+    # print(f"Min unit length: {min_unit_length/constants.capnostream_sr:.2f} seconds.")
+    # print(f"Max unit length: {max_unit_length/constants.capnostream_sr:.2f} seconds.")
+    # print(f"Mean unit length: {mean_unit_length/constants.capnostream_sr:.2f} seconds.")
+    # print(f"Total unit length: {total_unit_length/constants.capnostream_sr/60:.2f} minutes.")
 
     return units
 

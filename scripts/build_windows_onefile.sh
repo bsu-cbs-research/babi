@@ -13,6 +13,7 @@ fi
 
 if [[ ! -f "program/static/model.tflite" ]]; then
   echo "Missing program/static/model.tflite"
+  echo "Run: python scripts/convert_model_to_tflite.py"
   exit 1
 fi
 
@@ -21,23 +22,4 @@ if [[ -x "./.venv/Scripts/python.exe" ]]; then
   PYTHON_BIN="./.venv/Scripts/python.exe"
 fi
 
-"${PYTHON_BIN}" -m PyInstaller \
-  --noconfirm \
-  --clean \
-  --onefile \
-  --windowed \
-  --name "BABI Data Analysis Onefile" \
-  --icon "program/static/program-exe-icon.ico" \
-  --add-data "program/static;program/static" \
-  --hidden-import "sklearn.utils._typedefs" \
-  --hidden-import "sklearn.neighbors._partition_nodes" \
-  --hidden-import "ai_edge_litert.interpreter" \
-  --exclude-module "ipykernel" \
-  --exclude-module "ipywidgets" \
-  --exclude-module "jupyterlab_widgets" \
-  --exclude-module "IPython" \
-  --exclude-module "matplotlib" \
-  --exclude-module "tensorflow" \
-  --exclude-module "keras" \
-  --exclude-module "tensorboard" \
-  "program/app.py"
+"${PYTHON_BIN}" -m PyInstaller --noconfirm --clean "BABI Data Analysis Onefile.spec"

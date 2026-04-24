@@ -37,7 +37,7 @@ def calculate_threshold(ae: Sequential, val: np.ndarray, percentile: float = 95,
 
     threshold = np.percentile(mse, percentile)
     if export:
-        with open("models/out/threshold.txt", "w") as f:
+        with open("program/static/threshold.txt", "w") as f:
             f.write(f"{threshold}\n")
 
     return threshold
