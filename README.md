@@ -8,15 +8,15 @@ A desktop tool for the BABI lab that pairs infant breathing data with motion-cap
 
 ### What it does
 
+Ingests raw capnostream and motion-capture files from a study session, aligns them on a common timeline, and flags the parts of the capnostream where the CO₂ waveform looks abnormal (e.g. sensor artefacts, dropouts) so you can exclude those moments from your analysis.
+
 Each study session produces two kinds of recording:
 
 - A **capnostream** file (`.xlsx`) — the breath/CO₂ waveform sampled 20 times per second.
 - One or more **motion** files (`.tsv`) — body-marker positions sampled 100 times per second from the motion-capture rig.
 
-The two clocks rarely line up perfectly, and the capnostream waveform sometimes goes flat or noisy when the sensor is disturbed. This program:
-
 1. Reads both kinds of file out of a folder you select.
-2. Uses a small machine-learning model to scan the CO₂ waveform and mark each moment as either *normative* (looks like a real breath) or *abnormal* (sensor artefact, dropout, etc.).
+2. Uses a small machine-learning model to scan the CO₂ waveform and mark each moment as either _normative_ (looks like a real breath) or _abnormal_ (sensor artefact, dropout, etc.).
 3. Shifts the capnostream timeline by an offset you supply (in seconds) so it sits on top of the motion timeline.
 4. Writes out three clean files you can drop straight into your analysis tools.
 
@@ -36,11 +36,11 @@ The two clocks rarely line up perfectly, and the capnostream waveform sometimes 
 
 Inside `<source>_processed/` you will find:
 
-| File | What it is |
-| --- | --- |
-| `co2.csv` | The full capnostream record with an extra `co2_valid` column (1 = normative, 0 = abnormal). |
-| `motion.csv` | The combined motion record indexed by ISO-8601 timestamps, also carrying the `co2_valid` flag projected onto the motion timeline. |
-| `metadata.txt` | The original metadata blocks lifted verbatim from each source file, for provenance. |
+| File           | What it is                                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `co2.csv`      | The full capnostream record with an extra `co2_valid` column (1 = normative, 0 = abnormal).                                       |
+| `motion.csv`   | The combined motion record indexed by ISO-8601 timestamps, also carrying the `co2_valid` flag projected onto the motion timeline. |
+| `metadata.txt` | The original metadata blocks lifted verbatim from each source file, for provenance.                                               |
 
 If the source folder is malformed or the files don't pass validation, the app surfaces a specific error and lets you correct things without restarting.
 
@@ -79,11 +79,11 @@ The GUI calls `pipeline.execute` from a worker thread (`program/screens/configur
 
 Three files in `program/static/` are read at runtime and shipped with every build:
 
-| File | Producer | Consumer |
-| --- | --- | --- |
-| `model.tflite` | `scripts/convert_model_to_tflite.py` | `labeling.lite_runtime.load_model` |
-| `threshold.txt` | `labeling.autoencoder.calculate_threshold` | `labeling._load_artifacts` |
-| `scaling.txt` | `labeling.processing.get_training_dataset` | `labeling._load_artifacts` |
+| File            | Producer                                   | Consumer                           |
+| --------------- | ------------------------------------------ | ---------------------------------- |
+| `model.tflite`  | `scripts/convert_model_to_tflite.py`       | `labeling.lite_runtime.load_model` |
+| `threshold.txt` | `labeling.autoencoder.calculate_threshold` | `labeling._load_artifacts`         |
+| `scaling.txt`   | `labeling.processing.get_training_dataset` | `labeling._load_artifacts`         |
 
 `labeling/__init__.py` looks them up under `static_dir` (defaulting to `program/static/`); the GUI passes a PyInstaller-aware `_MEIPASS` path so the same code works inside the packaged app.
 
@@ -131,10 +131,10 @@ After step 3, `program/static/` contains the three artifacts the runtime needs a
 
 A committed `program/static/model.tflite` is required before any build will run.
 
-| Target | Spec / command |
-| --- | --- |
-| macOS `.app` | `scripts/build_macos.sh` → `BABI Data Analysis.spec` |
-| Windows folder bundle | `scripts/build_windows.sh` → `BABI Data Analysis.spec` |
+| Target                | Spec / command                                                         |
+| --------------------- | ---------------------------------------------------------------------- |
+| macOS `.app`          | `scripts/build_macos.sh` → `BABI Data Analysis.spec`                   |
+| Windows folder bundle | `scripts/build_windows.sh` → `BABI Data Analysis.spec`                 |
 | Windows single `.exe` | `scripts/build_windows_onefile.sh` → `BABI Data Analysis Onefile.spec` |
 
 Both specs share the same `Analysis()` block (datas, hidden imports, exclusions); only the `EXE()` arguments differ. Keep them in sync when editing.
