@@ -2,7 +2,7 @@
 
 A desktop tool for the BABI lab that pairs infant breathing data with motion-capture data and flags the parts of the breathing trace where the signal looks unreliable, so researchers can focus their analysis on the time windows where the data is good.
 
----
+_See the full [project report](report.md) for a detailed walkthrough of the design and implementation._
 
 ## For Researchers (Non-Technical)
 
